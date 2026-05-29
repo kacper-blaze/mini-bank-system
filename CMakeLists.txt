@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 4.1)
 project(mini_bank_system)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+find_package(Qt6 COMPONENTS Widgets REQUIRED)
 
 include_directories(gui)
 include_directories(include)
@@ -22,6 +27,8 @@ add_executable(mini_bank_system
         src/Customer.cpp
         src/Transaction.cpp
         src/Logger.cpp)
+
+target_link_libraries(mini_bank_system Qt6::Widgets)
 
 # Test executable
 add_executable(mini_bank_system_tests

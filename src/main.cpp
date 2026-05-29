@@ -1,4 +1,6 @@
 #include "BankSystem.hpp"
+#include "MainWindow.hpp"
+#include <QApplication>
 #include <iostream>
 #include <string>
 
@@ -13,14 +15,8 @@ void showMenu() {
     std::cout << "Choose an option: ";
 }
 
-int main() {
-    BankSystem bank;
+void runTerminalInterface(BankSystem& bank) {
     int choice = 0;
-
-    // Seed some initial demo data so the app isn't completely empty at boot
-    auto demoUser = bank.createCustomer("Anna", "Kowalska", "123456789", "anna@email.com");
-    bank.createAccount(demoUser);
-
     while (true) {
         showMenu();
         if (!(std::cin >> choice)) {
@@ -85,5 +81,33 @@ int main() {
                 std::cout << "Invalid choice. Try again.\n";
         }
     }
+}
+
+int main(int argc, char *argv[]) {
+    BankSystem bank;
+
+    // Seed some initial demo data so the app isn't completely empty at boot
+    auto demoUser = bank.createCustomer("Anna", "Kowalska", "123456789", "anna@email.com");
+    bank.createAccount(demoUser);
+
+    // Check for interface selection
+    bool useQt = false;
+    for (int i = 1; i < argc; i++) {
+        std::string arg = argv[i];
+        if (arg == "--gui" || arg == "-g") {
+            useQt = true;
+            break;
+        }
+    }
+
+    if (useQt) {
+        QApplication app(argc, argv);
+        auto window = std::make_shared<MainWindow>(std::make_shared<BankSystem>(bank));
+        window->show();
+        return app.exec();
+    } else {
+        runTerminalInterface(bank);
+    }
+
     return 0;
 }
