@@ -103,6 +103,30 @@ int main(int argc, char *argv[]) {
     if (useQt) {
         QApplication app(argc, argv);
         auto window = std::make_shared<MainWindow>(std::make_shared<BankSystem>(bank));
+        app.setStyleSheet(R"(
+    QMainWindow { background-color: #1e1e2e; }
+    QPushButton {
+        background-color: #4f46e5;
+        color: white;
+        border-radius: 6px;
+        padding: 6px 14px;
+        font-weight: bold;
+    }
+    QPushButton:hover { background-color: #6366f1; }
+    QLineEdit {
+        background: #2d2d3f;
+        color: #e2e8f0;
+        border: 1px solid #4f46e5;
+        border-radius: 4px;
+        padding: 4px 8px;
+    }
+    QTextEdit {
+        background: #13131f;
+        color: #a3e635;
+        font-family: monospace;
+        border-radius: 6px;
+    }
+)");
         window->show();
         return app.exec();
     } else {

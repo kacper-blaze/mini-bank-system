@@ -2,10 +2,11 @@
 #include <QMainWindow>
 #include <QPushButton>
 #include <QLineEdit>
-#include <QTextEdit>
+#include <QTableWidget>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QGroupBox>
 #include <QComboBox>
 #include <memory>
 #include "BankSystem.hpp"
@@ -37,6 +38,6 @@ private:
     QLineEdit *accountNumEdit;
     QLineEdit *toAccountNumEdit;
     QLineEdit *amountEdit;
-    QTextEdit *outputDisplay;
+    QTableWidget *accountsTable;
     QComboBox *accountSelector;
 };
