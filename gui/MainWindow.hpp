@@ -1,43 +1,51 @@
 #pragma once
-#include <QMainWindow>
-#include <QPushButton>
-#include <QLineEdit>
-#include <QTableWidget>
-#include <QVBoxLayout>
+#include "BankSystem.hpp"
+#include <QComboBox>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QGroupBox>
-#include <QComboBox>
+#include <QLineEdit>
+#include <QMainWindow>
+#include <QPushButton>
+#include <QTableWidget>
+#include <QTextEdit>
+#include <QVBoxLayout>
 #include <memory>
-#include "BankSystem.hpp"
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    MainWindow(std::shared_ptr<BankSystem> bank, QWidget *parent = nullptr);
-    ~MainWindow();
+    explicit MainWindow(std::shared_ptr<BankSystem> bank, QWidget* parent = nullptr);
+    ~MainWindow() override;
 
 private slots:
     void onCreateAccount();
     void onDeposit();
     void onWithdraw();
     void onTransfer();
-    void onDisplayAccounts();
+    void onRefreshTable();
 
 private:
     void setupUI();
-    void refreshAccounts();
+    void applyStyle();
+    void rebuildAccountTable();
+    void log(const QString& message);
 
     std::shared_ptr<BankSystem> bank;
 
-    QLineEdit *firstNameEdit;
-    QLineEdit *lastNameEdit;
-    QLineEdit *phoneEdit;
-    QLineEdit *emailEdit;
-    QLineEdit *accountNumEdit;
-    QLineEdit *toAccountNumEdit;
-    QLineEdit *amountEdit;
-    QTableWidget *accountsTable;
-    QComboBox *accountSelector;
+    // new account
+    QLineEdit*  firstNameEdit;
+    QLineEdit*  lastNameEdit;
+    QLineEdit*  phoneEdit;
+    QLineEdit*  emailEdit;
+    QComboBox*  accountTypeCombo;
+
+    // operations
+    QLineEdit*  accountNumEdit;
+    QLineEdit*  toAccountNumEdit;
+    QLineEdit*  amountEdit;
+
+    // views
+    QTableWidget* accountTable;
+    QTextEdit*    logDisplay;
 };

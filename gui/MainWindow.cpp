@@ -1,232 +1,374 @@
 #include "MainWindow.hpp"
-#include <QMessageBox>
-#include <QIcon>
-#include <QTableWidgetItem>
+#include <QApplication>
+#include <QGroupBox>
 #include <QHeaderView>
+#include <QMessageBox>
+#include <QSplitter>
 
-MainWindow::MainWindow(std::shared_ptr<BankSystem> bank, QWidget *parent)
-    : QMainWindow(parent), bank(bank) {
+MainWindow::MainWindow(std::shared_ptr<BankSystem> bank, QWidget* parent)
+    : QMainWindow(parent), bank(std::move(bank)) {
     setupUI();
-    refreshAccounts();
+    applyStyle();
+    rebuildAccountTable();
+    setWindowTitle("Mini Bank System");
+    resize(900, 650);
 }
 
 MainWindow::~MainWindow() {}
 
+void MainWindow::applyStyle() {
+    qApp->setStyleSheet(R"(
+        QMainWindow, QWidget {
+            background-color: #1a1a2e;
+            color: #e2e8f0;
+            font-family: "Segoe UI", sans-serif;
+            font-size: 13px;
+        }
+        QGroupBox {
+            border: 1px solid #3f3f6e;
+            border-radius: 8px;
+            margin-top: 10px;
+            padding: 10px;
+            font-weight: bold;
+            color: #818cf8;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 10px;
+            padding: 0 4px;
+        }
+        QLineEdit, QComboBox {
+            background: #16213e;
+            color: #e2e8f0;
+            border: 1px solid #3f3f6e;
+            border-radius: 5px;
+            padding: 5px 8px;
+            min-height: 22px;
+        }
+        QLineEdit:focus, QComboBox:focus {
+            border-color: #818cf8;
+        }
+        QPushButton {
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 16px;
+            font-weight: bold;
+            min-width: 80px;
+        }
+        QPushButton:hover   { background-color: #6366f1; }
+        QPushButton:pressed { background-color: #3730a3; }
+        QPushButton#dangerBtn {
+            background-color: #dc2626;
+        }
+        QPushButton#dangerBtn:hover { background-color: #ef4444; }
+        QTableWidget {
+            background: #16213e;
+            gridline-color: #2d2d5e;
+            border: 1px solid #3f3f6e;
+            border-radius: 6px;
+        }
+        QTableWidget::item { padding: 4px 8px; }
+        QTableWidget::item:selected {
+            background: #4f46e5;
+            color: white;
+        }
+        QHeaderView::section {
+            background-color: #0f0f23;
+            color: #818cf8;
+            padding: 6px 8px;
+            border: none;
+            border-bottom: 1px solid #3f3f6e;
+            font-weight: bold;
+        }
+        QTextEdit {
+            background: #0f0f23;
+            color: #a3e635;
+            font-family: "Courier New", monospace;
+            font-size: 12px;
+            border: 1px solid #3f3f6e;
+            border-radius: 6px;
+            padding: 6px;
+        }
+        QSplitter::handle { background: #3f3f6e; }
+        QScrollBar:vertical {
+            background: #16213e;
+            width: 8px;
+            border-radius: 4px;
+        }
+        QScrollBar::handle:vertical {
+            background: #4f46e5;
+            border-radius: 4px;
+            min-height: 20px;
+        }
+    )");
+}
+
+// UI Setup
+
 void MainWindow::setupUI() {
-    QWidget *centralWidget = new QWidget(this);
-    setCentralWidget(centralWidget);
+    QWidget* central = new QWidget(this);
+    setCentralWidget(central);
+    QVBoxLayout* root = new QVBoxLayout(central);
+    root->setContentsMargins(12, 12, 12, 12);
+    root->setSpacing(10);
 
-    QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget);
-    mainLayout->setContentsMargins(16, 16, 16, 16);
-    mainLayout->setSpacing(12);
+    // upper panel
+    QHBoxLayout* topRow = new QHBoxLayout();
+    topRow->setSpacing(10);
 
-    // Create Account Section
-    QGroupBox *createGroup = new QGroupBox("Create Account");
-    QVBoxLayout *createGroupLayout = new QVBoxLayout(createGroup);
-    createGroupLayout->setSpacing(8);
+    // new account
+    QGroupBox* createBox = new QGroupBox("New Account");
+    QVBoxLayout* createLayout = new QVBoxLayout(createBox);
+    createLayout->setSpacing(6);
 
-    QHBoxLayout *nameLayout = new QHBoxLayout();
-    firstNameEdit = new QLineEdit();
-    firstNameEdit->setPlaceholderText("First Name");
-    lastNameEdit = new QLineEdit();
-    lastNameEdit->setPlaceholderText("Last Name");
-    nameLayout->addWidget(firstNameEdit);
-    nameLayout->addWidget(lastNameEdit);
+    firstNameEdit = new QLineEdit(); firstNameEdit->setPlaceholderText("First Name");
+    lastNameEdit  = new QLineEdit(); lastNameEdit->setPlaceholderText("Last Name");
+    phoneEdit     = new QLineEdit(); phoneEdit->setPlaceholderText("Phone");
+    emailEdit     = new QLineEdit(); emailEdit->setPlaceholderText("Email");
 
-    QHBoxLayout *contactLayout = new QHBoxLayout();
-    phoneEdit = new QLineEdit();
-    phoneEdit->setPlaceholderText("Phone");
-    emailEdit = new QLineEdit();
-    emailEdit->setPlaceholderText("Email");
-    contactLayout->addWidget(phoneEdit);
-    contactLayout->addWidget(emailEdit);
+    accountTypeCombo = new QComboBox();
+    accountTypeCombo->addItem("Basic",    0);
+    accountTypeCombo->addItem("Savings",  1);
+    accountTypeCombo->addItem("Checking", 2);
 
-    QPushButton *createBtn = new QPushButton("Create Account");
-    createBtn->setIcon(QIcon::fromTheme("list-add"));
+    QPushButton* createBtn = new QPushButton("Create Account");
     connect(createBtn, &QPushButton::clicked, this, &MainWindow::onCreateAccount);
 
-    createGroupLayout->addLayout(nameLayout);
-    createGroupLayout->addLayout(contactLayout);
-    createGroupLayout->addWidget(createBtn);
+    createLayout->addWidget(firstNameEdit);
+    createLayout->addWidget(lastNameEdit);
+    createLayout->addWidget(phoneEdit);
+    createLayout->addWidget(emailEdit);
+    createLayout->addWidget(accountTypeCombo);
+    createLayout->addWidget(createBtn);
 
-    mainLayout->addWidget(createGroup);
+    // Operations
+    QGroupBox* opsBox = new QGroupBox("Operations");
+    QVBoxLayout* opsLayout = new QVBoxLayout(opsBox);
+    opsLayout->setSpacing(6);
 
-    // Deposit Section
-    QGroupBox *depositGroup = new QGroupBox("Deposit");
-    QHBoxLayout *depositLayout = new QHBoxLayout(depositGroup);
-    depositLayout->setSpacing(8);
+    accountNumEdit   = new QLineEdit(); accountNumEdit->setPlaceholderText("Account Number (e.g. BNK-1)");
+    toAccountNumEdit = new QLineEdit(); toAccountNumEdit->setPlaceholderText("To Account (transfer only)");
+    amountEdit       = new QLineEdit(); amountEdit->setPlaceholderText("Amount");
 
-    accountNumEdit = new QLineEdit();
-    accountNumEdit->setPlaceholderText("Account Number");
-    amountEdit = new QLineEdit();
-    amountEdit->setPlaceholderText("Amount");
+    QPushButton* depositBtn  = new QPushButton("Deposit");
+    QPushButton* withdrawBtn = new QPushButton("Withdraw");
+    QPushButton* transferBtn = new QPushButton("Transfer");
 
-    QPushButton *depositBtn = new QPushButton("Deposit");
-    depositBtn->setIcon(QIcon::fromTheme("go-down"));
-    connect(depositBtn, &QPushButton::clicked, this, &MainWindow::onDeposit);
-
-    depositLayout->addWidget(accountNumEdit);
-    depositLayout->addWidget(amountEdit);
-    depositLayout->addWidget(depositBtn);
-
-    mainLayout->addWidget(depositGroup);
-
-    // Withdraw Section
-    QGroupBox *withdrawGroup = new QGroupBox("Withdraw");
-    QHBoxLayout *withdrawLayout = new QHBoxLayout(withdrawGroup);
-    withdrawLayout->setSpacing(8);
-
-    QPushButton *withdrawBtn = new QPushButton("Withdraw");
-    withdrawBtn->setIcon(QIcon::fromTheme("go-up"));
+    connect(depositBtn,  &QPushButton::clicked, this, &MainWindow::onDeposit);
     connect(withdrawBtn, &QPushButton::clicked, this, &MainWindow::onWithdraw);
-
-    withdrawLayout->addWidget(accountNumEdit);
-    withdrawLayout->addWidget(amountEdit);
-    withdrawLayout->addWidget(withdrawBtn);
-
-    mainLayout->addWidget(withdrawGroup);
-
-    // Transfer Section
-    QGroupBox *transferGroup = new QGroupBox("Transfer");
-    QHBoxLayout *transferLayout = new QHBoxLayout(transferGroup);
-    transferLayout->setSpacing(8);
-
-    toAccountNumEdit = new QLineEdit();
-    toAccountNumEdit->setPlaceholderText("To Account Number");
-
-    QPushButton *transferBtn = new QPushButton("Transfer");
-    transferBtn->setIcon(QIcon::fromTheme("go-next"));
     connect(transferBtn, &QPushButton::clicked, this, &MainWindow::onTransfer);
 
-    transferLayout->addWidget(accountNumEdit);
-    transferLayout->addWidget(toAccountNumEdit);
-    transferLayout->addWidget(amountEdit);
-    transferLayout->addWidget(transferBtn);
+    QHBoxLayout* btnRow = new QHBoxLayout();
+    btnRow->addWidget(depositBtn);
+    btnRow->addWidget(withdrawBtn);
+    btnRow->addWidget(transferBtn);
 
-    mainLayout->addWidget(transferGroup);
+    opsLayout->addWidget(accountNumEdit);
+    opsLayout->addWidget(toAccountNumEdit);
+    opsLayout->addWidget(amountEdit);
+    opsLayout->addLayout(btnRow);
+    opsLayout->addStretch();
 
-    // Accounts Table
-    QGroupBox *accountsGroup = new QGroupBox("Accounts");
-    QVBoxLayout *accountsGroupLayout = new QVBoxLayout(accountsGroup);
+    topRow->addWidget(createBox);
+    topRow->addWidget(opsBox);
+    root->addLayout(topRow);
 
-    QPushButton *refreshBtn = new QPushButton("Refresh");
-    refreshBtn->setIcon(QIcon::fromTheme("view-refresh"));
-    connect(refreshBtn, &QPushButton::clicked, this, &MainWindow::onDisplayAccounts);
+    // bottom splitter
+    QSplitter* splitter = new QSplitter(Qt::Vertical);
 
-    accountsTable = new QTableWidget();
-    accountsTable->setColumnCount(3);
-    accountsTable->setHorizontalHeaderLabels({"Account Number", "Owner", "Balance"});
-    accountsTable->horizontalHeader()->setStretchLastSection(true);
-    accountsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    accountsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    accountsTable->setAlternatingRowColors(true);
+    // accounts table
+    QGroupBox* tableBox = new QGroupBox("Accounts");
+    QVBoxLayout* tableLayout = new QVBoxLayout(tableBox);
 
-    accountsGroupLayout->addWidget(refreshBtn);
-    accountsGroupLayout->addWidget(accountsTable);
+    accountTable = new QTableWidget();
+    accountTable->setColumnCount(5);
+    accountTable->setHorizontalHeaderLabels({"Account #", "Type", "Owner(s)", "Balance", "Status"});
+    accountTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    accountTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    accountTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    accountTable->setAlternatingRowColors(true);
+    accountTable->setStyleSheet("QTableWidget { alternate-background-color: #1e1e3a; }");
 
-    mainLayout->addWidget(accountsGroup);
+    QPushButton* refreshBtn = new QPushButton("Refresh");
+    connect(refreshBtn, &QPushButton::clicked, this, &MainWindow::onRefreshTable);
+    QHBoxLayout* tableHeaderRow = new QHBoxLayout();
+    tableHeaderRow->addStretch();
+    tableHeaderRow->addWidget(refreshBtn);
 
-    setWindowTitle("Mini Bank System");
-    resize(800, 600);
+    tableLayout->addLayout(tableHeaderRow);
+    tableLayout->addWidget(accountTable);
+
+    // Log
+    QGroupBox* logBox = new QGroupBox("Activity Log");
+    QVBoxLayout* logLayout = new QVBoxLayout(logBox);
+    logDisplay = new QTextEdit();
+    logDisplay->setReadOnly(true);
+    logDisplay->setMaximumHeight(140);
+    logLayout->addWidget(logDisplay);
+
+    splitter->addWidget(tableBox);
+    splitter->addWidget(logBox);
+    splitter->setStretchFactor(0, 3);
+    splitter->setStretchFactor(1, 1);
+
+    root->addWidget(splitter, 1);
 }
 
-void MainWindow::refreshAccounts() {
-    accountSelector = new QComboBox();
-    for (const auto& acc : bank->getAccounts()) {
-        accountSelector->addItem(QString::fromStdString(acc->getAccountNumber()));
+// helpers
+
+void MainWindow::log(const QString& message) {
+    logDisplay->append(message);
+}
+
+void MainWindow::rebuildAccountTable() {
+    const auto& accs = bank->getAccounts();
+    accountTable->setRowCount(static_cast<int>(accs.size()));
+
+    for (int row = 0; row < static_cast<int>(accs.size()); ++row) {
+        const auto& acc = accs[row];
+
+        QString owners;
+        for (const auto& c : acc->getOwner()) {
+            if (!owners.isEmpty()) owners += ", ";
+            owners += QString::fromStdString(c->getFullName());
+        }
+
+        accountTable->setItem(row, 0, new QTableWidgetItem(
+            QString::fromStdString(acc->getAccountNumber())));
+        accountTable->setItem(row, 1, new QTableWidgetItem(
+            QString::fromStdString(acc->getAccountTypeString())));
+        accountTable->setItem(row, 2, new QTableWidgetItem(owners));
+        accountTable->setItem(row, 3, new QTableWidgetItem(
+            "$" + QString::number(acc->getBalance(), 'f', 2)));
+
+        // color balance
+        auto* balanceItem = accountTable->item(row, 3);
+        if (acc->getBalance() < 0)
+            balanceItem->setForeground(QColor("#f87171"));
+        else
+            balanceItem->setForeground(QColor("#4ade80"));
+
+        accountTable->setItem(row, 4, new QTableWidgetItem("Active"));
     }
-    onDisplayAccounts();
 }
+
+// slots
 
 void MainWindow::onCreateAccount() {
-    QString first = firstNameEdit->text();
-    QString last = lastNameEdit->text();
-    QString phone = phoneEdit->text();
-    QString email = emailEdit->text();
+    QString first = firstNameEdit->text().trimmed();
+    QString last  = lastNameEdit->text().trimmed();
+    QString phone = phoneEdit->text().trimmed();
+    QString email = emailEdit->text().trimmed();
 
     if (first.isEmpty() || last.isEmpty() || phone.isEmpty() || email.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Please fill all fields");
+        QMessageBox::warning(this, "Missing Fields", "Please fill in all customer fields.");
         return;
     }
 
-    auto customer = bank->createCustomer(first.toStdString(), last.toStdString(),
-                                         phone.toStdString(), email.toStdString());
-    auto acc = bank->createAccount(customer);
+    // find or create customer
+    auto customer = bank->findCustomer((first + " " + last).toStdString());
+    if (!customer) {
+        customer = bank->createCustomer(first.toStdString(), last.toStdString(),
+                                        phone.toStdString(), email.toStdString());
+        log("New customer registered: " + first + " " + last);
+    } else {
+        log("Existing customer found: " + first + " " + last +
+            " (opening additional account)");
+    }
 
-    QMessageBox::information(this, "Success", "Account Created: " + QString::fromStdString(acc->getAccountNumber()));
+    std::shared_ptr<Account> acc;
+    int typeIdx = accountTypeCombo->currentIndex();
+    if (typeIdx == 1)
+        acc = bank->createSavingsAccount(customer);
+    else if (typeIdx == 2)
+        acc = bank->createCheckingAccount(customer);
+    else
+        acc = bank->createAccount(customer);
 
-    firstNameEdit->clear();
-    lastNameEdit->clear();
-    phoneEdit->clear();
-    emailEdit->clear();
-    refreshAccounts();
+    log("Account created: " + QString::fromStdString(acc->getAccountNumber()) +
+        " [" + QString::fromStdString(acc->getAccountTypeString()) + "]");
+
+    firstNameEdit->clear(); lastNameEdit->clear();
+    phoneEdit->clear();     emailEdit->clear();
+
+    rebuildAccountTable();
 }
 
 void MainWindow::onDeposit() {
-    QString accNum = accountNumEdit->text();
-    QString amountStr = amountEdit->text();
-
+    QString accNum    = accountNumEdit->text().trimmed();
+    QString amountStr = amountEdit->text().trimmed();
     if (accNum.isEmpty() || amountStr.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Please fill account number and amount");
+        QMessageBox::warning(this, "Missing Fields", "Enter account number and amount.");
         return;
     }
 
-    double amount = amountStr.toDouble();
-    if (bank->depositToAccount(accNum.toStdString(), amount)) {
-        QMessageBox::information(this, "Success", "Deposit Successful");
-        onDisplayAccounts();
-    } else {
-        QMessageBox::warning(this, "Error", "Deposit Failed");
+    bool ok;
+    double amount = amountStr.toDouble(&ok);
+    if (!ok || amount <= 0) {
+        QMessageBox::warning(this, "Invalid Amount", "Please enter a valid positive number.");
+        return;
     }
+
+    if (bank->depositToAccount(accNum.toStdString(), amount)) {
+        log("Deposited $" + QString::number(amount, 'f', 2) + " → " + accNum);
+    } else {
+        log("Deposit FAILED for " + accNum);
+    }
+    rebuildAccountTable();
 }
 
 void MainWindow::onWithdraw() {
-    QString accNum = accountNumEdit->text();
-    QString amountStr = amountEdit->text();
-
+    QString accNum    = accountNumEdit->text().trimmed();
+    QString amountStr = amountEdit->text().trimmed();
     if (accNum.isEmpty() || amountStr.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Please fill account number and amount");
+        QMessageBox::warning(this, "Missing Fields", "Enter account number and amount.");
         return;
     }
 
-    double amount = amountStr.toDouble();
-    if (bank->withdrawFromAccount(accNum.toStdString(), amount)) {
-        QMessageBox::information(this, "Success", "Withdrawal Successful");
-        onDisplayAccounts();
-    } else {
-        QMessageBox::warning(this, "Error", "Withdrawal Failed");
+    bool ok;
+    double amount = amountStr.toDouble(&ok);
+    if (!ok || amount <= 0) {
+        QMessageBox::warning(this, "Invalid Amount", "Please enter a valid positive number.");
+        return;
     }
+
+    if (bank->withdrawFromAccount(accNum.toStdString(), amount)) {
+        log("Withdrew $" + QString::number(amount, 'f', 2) + " ← " + accNum);
+    } else {
+        log("Withdrawal FAILED for " + accNum + " (insufficient funds or limit reached)");
+    }
+    rebuildAccountTable();
 }
 
 void MainWindow::onTransfer() {
-    QString fromAcc = accountNumEdit->text();
-    QString toAcc = toAccountNumEdit->text();
-    QString amountStr = amountEdit->text();
+    QString fromAcc   = accountNumEdit->text().trimmed();
+    QString toAcc     = toAccountNumEdit->text().trimmed();
+    QString amountStr = amountEdit->text().trimmed();
 
     if (fromAcc.isEmpty() || toAcc.isEmpty() || amountStr.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Please fill all fields");
+        QMessageBox::warning(this, "Missing Fields", "Fill in both account numbers and amount.");
         return;
     }
 
-    double amount = amountStr.toDouble();
-    if (bank->transferFunds(fromAcc.toStdString(), toAcc.toStdString(), amount)) {
-        QMessageBox::information(this, "Success", "Transfer Successful");
-        onDisplayAccounts();
-    } else {
-        QMessageBox::warning(this, "Error", "Transfer Failed");
+    bool ok;
+    double amount = amountStr.toDouble(&ok);
+    if (!ok || amount <= 0) {
+        QMessageBox::warning(this, "Invalid Amount", "Please enter a valid positive number.");
+        return;
     }
+
+    if (bank->transferFunds(fromAcc.toStdString(), toAcc.toStdString(), amount)) {
+        log("Transferred $" + QString::number(amount, 'f', 2) +
+            " from " + fromAcc + " to " + toAcc);
+    } else {
+        log("Transfer FAILED: " + fromAcc + " → " + toAcc);
+    }
+    rebuildAccountTable();
 }
 
-void MainWindow::onDisplayAccounts() {
-    accountsTable->setRowCount(0);
-    int row = 0;
-    for (const auto& acc : bank->getAccounts()) {
-        accountsTable->insertRow(row);
-        accountsTable->setItem(row, 0, new QTableWidgetItem(QString::fromStdString(acc->getAccountNumber())));
-        auto owners = acc->getOwner();
-        QString ownerName = owners.empty() ? "Unknown" : QString::fromStdString(owners[0]->getFullName());
-        accountsTable->setItem(row, 1, new QTableWidgetItem(ownerName));
-        accountsTable->setItem(row, 2, new QTableWidgetItem(QString::number(acc->getBalance(), 'f', 2)));
-        row++;
-    }
+void MainWindow::onRefreshTable() {
+    rebuildAccountTable();
+    log("Table refreshed.");
 }
