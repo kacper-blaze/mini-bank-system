@@ -161,3 +161,31 @@ Wszystkie operacje są zapisywane do pliku `bank_audit.log` w katalogu roboczym:
 - Dane są przechowywane wyłącznie w pamięci - po zamknięciu programu wszystko ginie
 - Typ `double` do przechowywania kwot - przy intensywnym użytkowaniu mogą wystąpić błędy zaokrągleń (docelowo: arytmetyka na groszach jako `int`)
 - `resetDailyWithdrawalCount()` w `SavingsAccount` trzeba wywoływać ręcznie - brak wbudowanego schedulera
+
+---
+
+## Komendy Git użyte w projekcie
+
+Poniżej znajduje się zestaw podstawowych komend linii poleceń systemu Git, które zostały wykorzystane do inicjalizacji, rozwoju oraz zachowania plików w repozytorium:
+
+```bash
+# Inicjalizacja nowego repozytorium lokalnego
+git init
+
+# Sprawdzenie statusu plików
+git status
+
+# Dodanie wszystkich zmian do obszaru przejściowego (staging)
+git add .
+
+# Zatwierdzenie zmian z krótkim opisem
+git commit -m "treść commita"
+
+# Podpięcie zdalnego repozytorium GitHub
+git remote add origin <link>
+
+# Wypchnięcie zmian na serwer do gałęzi głównej
+git push -u origin main
+
+# Podejrzenie historii commitów
+git log --oneline
